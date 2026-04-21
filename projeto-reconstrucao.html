@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>PROJETO MULLER — Reconstrução Total</title>
+
+<!-- ===== PWA: identidade do app ===== -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0A0A0A">
+<meta name="description" content="Sistema pessoal de reconstrução em 4 pilares: Saúde, Carreira, Relacionamento e Mentalidade.">
+
+<!-- ===== iOS: faz o app abrir em tela cheia quando instalado ===== -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MULLER">
+
+<!-- ===== Ícones ===== -->
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C97A;
+    --black: #0A0A0A;
+    --dark: #111111;
+    --dark2: #1A1A1A;
+    --dark3: #242424;
+    --gray: #555;
+    --gray-light: #888;
+    --white: #F5F0E8;
+    --red: #C0392B;
+    --green: #27AE60;
+    --blue: #2980B9;
+    --purple: #8E44AD;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    /* iOS: respeita notch/Dynamic Island e área do home indicator */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* Evita bounce/elástico horizontal quando instalado */
+    overscroll-behavior-y: contain;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* GRAIN TEXTURE */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+    padding: 0 2rem;
+    /* iOS: desce o nav abaixo do notch quando em modo standalone */
+    padding-top: env(safe-area-inset-top);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: calc(56px + env(safe-area-inset-top));
+  }
+
+  .nav-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 3px;
+    color: var(--gold);
+  }
+
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+  }
+
+  .nav-tab {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-light);
+    padding: 0 1.2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .nav-tab:hover { color: var(--white); }
+  .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .nav-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--gray);
+    letter-spacing: 1px;
+  }
+
+  /* VIEWS */
+  .view { display: none; padding-top: calc(56px + env(safe-area-inset-top)); }
+  .view.active { display: block; }
+
+  /* ===== PAINEL VIEW ===== */
+  .painel-header {
+    padding: 3rem 2rem 2rem;
+    border-bottom: 1px solid var(--dark3);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .painel-header::after {
+    content: 'GUI';
+    position: absolute;
+    right: -1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 8rem;
+    color: rgba(201,168,76,0.04);
+    letter-spacing: 10px;
+    pointer-events: none;
+  }
+
+  .painel-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .painel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    letter-spacing: 4px;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .painel-sub {
+    font-size: 0.8rem;
+    color: var(--gray-light);
+    font-weight: 300;
+  }
+
+  /* SCORE GERAL */
+  .score-section {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2rem;
+    align-items: center;
+    border-bottom: 1px solid var(--dark3);
+  }
+
+  .score-circle {
+    width: 120px;
+    height: 120px;
+    position: relative;
+  }
+
+  .score-circle svg {
+    width: 120px;
+    height: 120px;
+    transform: rotate(-90deg);
+  }
+
+  .score-circle .track { fill: none; stroke: var(--dark3); stroke-width: 6; }
+  .score-circle .fill {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-dasharray: 314;
+    stroke-dashoffset: 314;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .score-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .score-num span:first-child {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .score-num span:last-child {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--gray);
+    letter-spacing: 2px;
+  }
+
+  .score-areas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+
+  .area-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .area-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .area-bar-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-light);
+  }
+
+  .area-bar-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--white);
+  }
+
+  .bar-track {
+    height: 3px;
+    background: var(--dark3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    width: 0%;
+    transition: width 1.5s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* PILARES */
+  .pilares-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--dark3);
+    border-top: 1px solid var(--dark3);
+  }
+
+  .pilar-card {
+    background: var(--dark);
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pilar-card:hover { background: var(--dark2); }
+
+  .pilar-accent {
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+  }
+
+  .pilar-emoji { font-size: 1.4rem; margin-bottom: 0.5rem; display: block; }
+
+  .pilar-nome {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    margin-bottom: 0.3rem;
+  }
+
+  .pilar-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 1px;
+    color: var(--gray-light);
+    margin-bottom: 1rem;
+  }
+
+  .pilar-mini-bar {
+    height: 2px;
+    background: var(--dark3);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+
+  .pilar-mini-fill {
+    height: 100%;
+    border-radius: 1px;
+    width: 0%;
+    transition: width 1.5s 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .pilar-score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--gray);
+    text-align: right;
+  }
+
+  /* CHECKLIST DIÁRIO */
+  .check-section {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--dark3);
+  }
+
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+  }
+
+  .check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 1rem;
+    background: var(--dark2);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+
+  .check-item:hover { border-color: var(--dark3); }
+  .check-item.done { opacity: 0.5; }
+  .check-item.done .check-box { background: var(--gold); border-color: var(--gold); }
+  .check-item.done .check-box::after { opacity: 1; }
+
+  .check-box {
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid var(--dark3);
+    border-radius: 4px;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.2s;
+  }
+
+  .check-box::after {
+    content: '✓';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: var(--black);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .check-text {
+    font-size: 0.8rem;
+    font-weight: 300;
+    flex: 1;
+  }
+
+  .check-area {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--dark3);
+    color: var(--gray-light);
+  }
+
+  /* ===== METAS VIEW ===== */
+  .metas-container { padding: 2rem; }
+
+  .meta-pilar-section { margin-bottom: 2.5rem; }
+
+  .meta-pilar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--dark3);
+  }
+
+  .meta-pilar-icon { font-size: 1.2rem; }
+
+  .meta-pilar-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+  }
+
+  .meta-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .meta-card {
+    background: var(--dark2);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--dark3);
+    transition: all 0.2s;
+  }
+
+  .meta-card:hover { background: var(--dark3); }
+
+  .meta-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+  }
+
+  .meta-desc {
+    font-size: 0.85rem;
+    font-weight: 400;
+    flex: 1;
+    padding-right: 1rem;
+    line-height: 1.4;
+  }
+
+  .meta-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .badge-mensal { background: rgba(201,168,76,0.15); color: var(--gold); }
+  .badge-trimestral { background: rgba(41,128,185,0.15); color: #5DADE2; }
+  .badge-anual { background: rgba(142,68,173,0.15); color: #BB8FCE; }
+  .badge-habito { background: rgba(39,174,96,0.15); color: #58D68D; }
+
+  .meta-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  .meta-bar-track {
+    flex: 1;
+    height: 3px;
+    background: var(--dark3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .meta-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s;
+  }
+
+  .meta-pct {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--gray-light);
+    min-width: 30px;
+    text-align: right;
+  }
+
+  /* INPUT AREA */
+  .meta-input-area {
+    margin-top: 0.8rem;
+    display: none;
+  }
+
+  .meta-input-area.open { display: block; }
+
+  .meta-slider {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+  }
+
+  /* ===== REGISTRO VIEW ===== */
+  .registro-container { padding: 2rem; }
+
+  .registro-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  .form-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .form-textarea {
+    background: var(--dark2);
+    border: 1px solid var(--dark3);
+    border-radius: 8px;
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    padding: 0.8rem 1rem;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+
+  .form-textarea:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+
+  .form-textarea::placeholder { color: var(--gray); }
+
+  .humor-selector {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .humor-btn {
+    flex: 1;
+    padding: 0.6rem;
+    background: var(--dark2);
+    border: 1px solid var(--dark3);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    text-align: center;
+    transition: all 0.2s;
+    color: var(--white);
+  }
+
+  .humor-btn:hover { border-color: var(--gold); transform: scale(1.05); }
+  .humor-btn.selected { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+
+  .humor-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.45rem;
+    color: var(--gray);
+    letter-spacing: 1px;
+    padding: 0 0.2rem;
+    margin-top: 0.2rem;
+  }
+
+  .area-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .area-tag {
+    padding: 0.4rem 0.8rem;
+    background: var(--dark2);
+    border: 1px solid var(--dark3);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+    color: var(--gray-light);
+  }
+
+  .area-tag:hover { border-color: var(--gold); color: var(--white); }
+  .area-tag.selected { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.1); }
+
+  .btn-salvar {
+    background: var(--gold);
+    color: var(--black);
+    border: none;
+    border-radius: 8px;
+    padding: 0.9rem 2rem;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+
+  .btn-salvar:hover { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-salvar:active { transform: translateY(0); }
+
+  /* HISTÓRICO */
+  .historico-section { margin-top: 2rem; }
+
+  .historico-list { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; }
+
+  .historico-card {
+    background: var(--dark2);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--dark3);
+  }
+
+  .historico-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+  }
+
+  .historico-data {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--gray-light);
+    letter-spacing: 1px;
+  }
+
+  .historico-humor { font-size: 0.9rem; }
+
+  .historico-texto {
+    font-size: 0.8rem;
+    color: var(--gray-light);
+    font-weight: 300;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+  }
+
+  .historico-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .historico-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.45rem;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--dark3);
+    color: var(--gray-light);
+  }
+
+  /* ===== REVISÃO VIEW ===== */
+  .revisao-container { padding: 2rem; }
+
+  .revisao-header {
+    text-align: center;
+    padding: 2rem 0;
+    border-bottom: 1px solid var(--dark3);
+    margin-bottom: 2rem;
+  }
+
+  .revisao-titulo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 4px;
+    color: var(--gold);
+    margin-bottom: 0.3rem;
+  }
+
+  .revisao-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--gray);
+    letter-spacing: 2px;
+  }
+
+  .insight-card {
+    background: var(--dark2);
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+    margin-bottom: 1rem;
+    border-top: 2px solid var(--gold);
+  }
+
+  .insight-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 2px;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+
+  .insight-text {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    font-weight: 300;
+    color: var(--white);
+  }
+
+  .semaforo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .semaforo-card {
+    background: var(--dark2);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .semaforo-icon { font-size: 1.8rem; margin-bottom: 0.4rem; display: block; }
+
+  .semaforo-pilar {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    margin-bottom: 0.2rem;
+  }
+
+  .semaforo-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--gray-light);
+    letter-spacing: 1px;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--gold);
+    color: var(--black);
+    padding: 0.7rem 1.5rem;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    z-index: 999;
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .view.active > * {
+    animation: fadeUp 0.4s ease forwards;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--gray);
+  }
+
+  .empty-state-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .empty-state-text { font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 2px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">MULLER</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('painel')">Painel</button>
+    <button class="nav-tab" onclick="showView('metas')">Metas</button>
+    <button class="nav-tab" onclick="showView('registro')">Registro</button>
+    <button class="nav-tab" onclick="showView('revisao')">Revisão</button>
+  </div>
+  <div class="nav-date" id="nav-date"></div>
+</nav>
+
+<!-- PAINEL -->
+<div class="view active" id="view-painel">
+  <div class="painel-header">
+    <div class="painel-label">Projeto Reconstrução</div>
+    <div class="painel-title">GUILHERME<br>MULLER</div>
+    <div class="painel-sub">37 anos · ABC Paulista · Iniciado hoje</div>
+  </div>
+
+  <div class="score-section">
+    <div class="score-circle">
+      <svg viewBox="0 0 100 100">
+        <circle class="track" cx="50" cy="50" r="44"/>
+        <circle class="fill" id="score-arc" cx="50" cy="50" r="44"/>
+      </svg>
+      <div class="score-num">
+        <span id="score-num">0</span>
+        <span>SCORE</span>
+      </div>
+    </div>
+    <div class="score-areas">
+      <div class="area-bar">
+        <div class="area-bar-header">
+          <span class="area-bar-name">Saúde</span>
+          <span class="area-bar-val" id="val-saude">0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-saude" style="background:#E74C3C"></div></div>
+      </div>
+      <div class="area-bar">
+        <div class="area-bar-header">
+          <span class="area-bar-name">Carreira</span>
+          <span class="area-bar-val" id="val-carreira">0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-carreira" style="background:#3498DB"></div></div>
+      </div>
+      <div class="area-bar">
+        <div class="area-bar-header">
+          <span class="area-bar-name">Relação</span>
+          <span class="area-bar-val" id="val-relacao">0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-relacao" style="background:#27AE60"></div></div>
+      </div>
+      <div class="area-bar">
+        <div class="area-bar-header">
+          <span class="area-bar-name">Mente</span>
+          <span class="area-bar-val" id="val-mente">0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="bar-mente" style="background:var(--gold)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pilares-grid">
+    <div class="pilar-card" onclick="showView('metas')">
+      <div class="pilar-accent" style="background:#E74C3C"></div>
+      <span class="pilar-emoji">💪</span>
+      <div class="pilar-nome">SAÚDE</div>
+      <div class="pilar-status">TREINO · ALIMENTAÇÃO · SONO</div>
+      <div class="pilar-mini-bar"><div class="pilar-mini-fill" id="pbar-saude" style="background:#E74C3C"></div></div>
+      <div class="pilar-score-label" id="plabel-saude">0%</div>
+    </div>
+    <div class="pilar-card" onclick="showView('metas')">
+      <div class="pilar-accent" style="background:#3498DB"></div>
+      <span class="pilar-emoji">📈</span>
+      <div class="pilar-nome">CARREIRA</div>
+      <div class="pilar-status">SANTANDER · MULLER · RENDA</div>
+      <div class="pilar-mini-bar"><div class="pilar-mini-fill" id="pbar-carreira" style="background:#3498DB"></div></div>
+      <div class="pilar-score-label" id="plabel-carreira">0%</div>
+    </div>
+    <div class="pilar-card" onclick="showView('metas')">
+      <div class="pilar-accent" style="background:#27AE60"></div>
+      <span class="pilar-emoji">❤️</span>
+      <div class="pilar-nome">RELACIONAMENTO</div>
+      <div class="pilar-status">NOIVADO · FAMÍLIA · PRESENÇA</div>
+      <div class="pilar-mini-bar"><div class="pilar-mini-fill" id="pbar-relacao" style="background:#27AE60"></div></div>
+      <div class="pilar-score-label" id="plabel-relacao">0%</div>
+    </div>
+    <div class="pilar-card" onclick="showView('metas')">
+      <div class="pilar-accent" style="background:var(--gold)"></div>
+      <span class="pilar-emoji">🧠</span>
+      <div class="pilar-nome">MENTALIDADE</div>
+      <div class="pilar-status">FOCO · DISCIPLINA · EMOÇÕES</div>
+      <div class="pilar-mini-bar"><div class="pilar-mini-fill" id="pbar-mente" style="background:var(--gold)"></div></div>
+      <div class="pilar-score-label" id="plabel-mente">0%</div>
+    </div>
+  </div>
+
+  <div class="check-section">
+    <div class="section-title">— Checklist de hoje</div>
+    <div class="check-list" id="check-list"></div>
+  </div>
+</div>
+
+<!-- METAS -->
+<div class="view" id="view-metas">
+  <div class="metas-container">
+
+    <div class="meta-pilar-section">
+      <div class="meta-pilar-header">
+        <span class="meta-pilar-icon">💪</span>
+        <span class="meta-pilar-title" style="color:#E74C3C">SAÚDE & CORPO</span>
+      </div>
+      <div class="meta-list" id="metas-saude"></div>
+    </div>
+
+    <div class="meta-pilar-section">
+      <div class="meta-pilar-header">
+        <span class="meta-pilar-icon">📈</span>
+        <span class="meta-pilar-title" style="color:#3498DB">CARREIRA & RENDA</span>
+      </div>
+      <div class="meta-list" id="metas-carreira"></div>
+    </div>
+
+    <div class="meta-pilar-section">
+      <div class="meta-pilar-header">
+        <span class="meta-pilar-icon">❤️</span>
+        <span class="meta-pilar-title" style="color:#27AE60">RELACIONAMENTO</span>
+      </div>
+      <div class="meta-list" id="metas-relacao"></div>
+    </div>
+
+    <div class="meta-pilar-section">
+      <div class="meta-pilar-header">
+        <span class="meta-pilar-icon">🧠</span>
+        <span class="meta-pilar-title" style="color:var(--gold)">MENTALIDADE</span>
+      </div>
+      <div class="meta-list" id="metas-mente"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div class="view" id="view-registro">
+  <div class="registro-container">
+    <div class="section-title">— Novo registro</div>
+
+    <div class="registro-form">
+      <div class="form-group">
+        <div class="form-label">Como você está hoje?</div>
+        <div class="humor-selector">
+          <button class="humor-btn" data-humor="1" onclick="selectHumor(this)">😞</button>
+          <button class="humor-btn" data-humor="2" onclick="selectHumor(this)">😕</button>
+          <button class="humor-btn" data-humor="3" onclick="selectHumor(this)">😐</button>
+          <button class="humor-btn" data-humor="4" onclick="selectHumor(this)">🙂</button>
+          <button class="humor-btn" data-humor="5" onclick="selectHumor(this)">😄</button>
+        </div>
+        <div class="humor-labels">
+          <span>péssimo</span><span></span><span>neutro</span><span></span><span>ótimo</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">O que aconteceu hoje?</div>
+        <textarea class="form-textarea" id="txt-aconteceu" placeholder="Descreva os fatos do dia — o que você fez, deixou de fazer, o que aconteceu..." rows="4"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">O que você sentiu?</div>
+        <textarea class="form-textarea" id="txt-sentiu" placeholder="Como você se sentiu? Frustrado, animado, ansioso, focado... seja honesto." rows="3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Uma coisa que posso fazer diferente amanhã</div>
+        <textarea class="form-textarea" id="txt-diferente" placeholder="Apenas uma. Pequena e concreta." rows="2"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">Áreas envolvidas neste registro</div>
+        <div class="area-tags">
+          <span class="area-tag" onclick="toggleTag(this)" data-tag="saude">💪 Saúde</span>
+          <span class="area-tag" onclick="toggleTag(this)" data-tag="carreira">📈 Carreira</span>
+          <span class="area-tag" onclick="toggleTag(this)" data-tag="relacao">❤️ Relacionamento</span>
+          <span class="area-tag" onclick="toggleTag(this)" data-tag="mente">🧠 Mentalidade</span>
+        </div>
+      </div>
+
+      <button class="btn-salvar" onclick="salvarRegistro()">SALVAR REGISTRO</button>
+    </div>
+
+    <div class="historico-section">
+      <div class="section-title">— Registros anteriores</div>
+      <div class="historico-list" id="historico-list">
+        <div class="empty-state">
+          <div class="empty-state-icon">📓</div>
+          <div class="empty-state-text">NENHUM REGISTRO AINDA</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REVISÃO -->
+<div class="view" id="view-revisao">
+  <div class="revisao-container">
+    <div class="revisao-header">
+      <div class="revisao-titulo">ANÁLISE DO PERÍODO</div>
+      <div class="revisao-sub" id="revisao-periodo">AGUARDANDO REGISTROS</div>
+    </div>
+
+    <div class="semaforo-grid" id="semaforo-grid"></div>
+
+    <div id="insights-container">
+      <div class="insight-card">
+        <div class="insight-label">— O que este sistema é</div>
+        <div class="insight-text">
+          Um espelho, não um juiz. O objetivo não é te fazer sentir bem ou mal — é te mostrar padrões que você não vê quando está dentro do dia. Quanto mais registros você fizer, mais precisa fica a análise.
+        </div>
+      </div>
+      <div class="insight-card">
+        <div class="insight-label">— Como usar</div>
+        <div class="insight-text">
+          Registre todo dia, mesmo que seja uma linha. Venha aqui semanalmente para a revisão. Ajuste as metas conforme a realidade — não conforme o que você acha que deveria querer.
+        </div>
+      </div>
+      <div class="insight-card" style="border-top-color:#E74C3C">
+        <div class="insight-label">— Sobre o medo de abandonar</div>
+        <div class="insight-text">
+          Você identificou isso como seu maior obstáculo. Então construímos um sistema que não colapsa se você falhar 3 dias seguidos. Uma entrada é sempre melhor que zero. O sistema é feito para aguentar recaídas — não para fingir que elas não existem.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== DATA ======
+const METAS = {
+  saude: [
+    { id: 's1', desc: 'Treinar pelo menos 3x por semana de forma consistente', prazo: 'habito', cor: '#E74C3C', prog: 0 },
+    { id: 's2', desc: 'Definir e seguir uma rotina de sono (mesmo horário de dormir)', prazo: 'mensal', cor: '#E74C3C', prog: 0 },
+    { id: 's3', desc: 'Eliminar um hábito alimentar que você sabe que está errado', prazo: 'mensal', cor: '#E74C3C', prog: 0 },
+    { id: 's4', desc: 'Chegar ao fim do trimestre com consistência comprovada no treino', prazo: 'trimestral', cor: '#E74C3C', prog: 0 },
+  ],
+  carreira: [
+    { id: 'c1', desc: 'Definir se aceita ou não o Santander com clareza e critérios objetivos', prazo: 'mensal', cor: '#3498DB', prog: 0 },
+    { id: 'c2', desc: 'Ter pelo menos 3 clientes ativos na Muller Consultoria', prazo: 'trimestral', cor: '#3498DB', prog: 0 },
+    { id: 'c3', desc: 'Publicar conteúdo financeiro 2x por semana no Instagram', prazo: 'habito', cor: '#3498DB', prog: 0 },
+    { id: 'c4', desc: 'Definir meta de renda mensal clara e um plano para chegar lá', prazo: 'mensal', cor: '#3498DB', prog: 0 },
+  ],
+  relacao: [
+    { id: 'r1', desc: 'Criar uma atividade semanal dedicada exclusivamente à noiva', prazo: 'habito', cor: '#27AE60', prog: 0 },
+    { id: 'r2', desc: 'Ter uma conversa honesta sobre planos de vida com a noiva este mês', prazo: 'mensal', cor: '#27AE60', prog: 0 },
+    { id: 'r3', desc: 'Estar presente de verdade — sem celular em pelo menos 1h do dia com ela', prazo: 'habito', cor: '#27AE60', prog: 0 },
+  ],
+  mente: [
+    { id: 'm1', desc: 'Fazer um registro neste sistema todo dia por 30 dias seguidos', prazo: 'mensal', cor: '#C9A84C', prog: 0 },
+    { id: 'm2', desc: 'Identificar e nomear o padrão que te faz abandonar projetos', prazo: 'trimestral', cor: '#C9A84C', prog: 0 },
+    { id: 'm3', desc: 'Criar uma rotina matinal de 15 minutos (sem celular)', prazo: 'habito', cor: '#C9A84C', prog: 0 },
+    { id: 'm4', desc: 'Concluir o processo de cidadania alemã com próximo passo definido', prazo: 'anual', cor: '#C9A84C', prog: 0 },
+  ]
+};
+
+const CHECKLIST_BASE = [
+  { text: 'Treinar hoje', area: 'saude' },
+  { text: 'Publicar ou criar conteúdo', area: 'carreira' },
+  { text: 'Momento de presença com a noiva', area: 'relacao' },
+  { text: 'Fazer este registro', area: 'mente' },
+  { text: 'Uma ação concreta na Muller Consultoria', area: 'carreira' },
+  { text: 'Dormir no horário certo esta noite', area: 'saude' },
+];
+
+let state = {
+  metas: JSON.parse(localStorage.getItem('pm_metas') || 'null') || METAS,
+  registros: JSON.parse(localStorage.getItem('pm_registros') || '[]'),
+  checks: JSON.parse(localStorage.getItem('pm_checks_' + today()) || '[]'),
+  humorSelected: null,
+  tagsSelected: [],
+};
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function save() {
+  localStorage.setItem('pm_metas', JSON.stringify(state.metas));
+  localStorage.setItem('pm_registros', JSON.stringify(state.registros));
+  localStorage.setItem('pm_checks_' + today(), JSON.stringify(state.checks));
+}
+
+// ====== NAV ======
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(name.slice(0,4))) t.classList.add('active');
+  });
+  if (name === 'painel') renderPainel();
+  if (name === 'metas') renderMetas();
+  if (name === 'registro') renderHistorico();
+  if (name === 'revisao') renderRevisao();
+}
+
+// ====== DATE ======
+function initDate() {
+  const now = new Date();
+  const opts = { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' };
+  document.getElementById('nav-date').textContent = now.toLocaleDateString('pt-BR', opts).toUpperCase();
+}
+
+// ====== PAINEL ======
+function renderPainel() {
+  // Calcular scores
+  const scores = {};
+  ['saude', 'carreira', 'relacao', 'mente'].forEach(area => {
+    const metas = state.metas[area];
+    const avg = metas.reduce((s, m) => s + m.prog, 0) / metas.length;
+    scores[area] = Math.round(avg);
+  });
+
+  const geral = Math.round(Object.values(scores).reduce((s, v) => s + v, 0) / 4);
+
+  // Score circle
+  setTimeout(() => {
+    const arc = document.getElementById('score-arc');
+    const offset = 314 - (314 * geral / 100);
+    arc.style.strokeDashoffset = offset;
+    document.getElementById('score-num').textContent = geral;
+  }, 100);
+
+  // Barras
+  const map = { saude: scores.saude, carreira: scores.carreira, relacao: scores.relacao, mente: scores.mente };
+  setTimeout(() => {
+    Object.entries(map).forEach(([k, v]) => {
+      document.getElementById('bar-' + k).style.width = v + '%';
+      document.getElementById('val-' + k).textContent = v;
+      document.getElementById('pbar-' + k).style.width = v + '%';
+      document.getElementById('plabel-' + k).textContent = v + '%';
+    });
+  }, 200);
+
+  // Checklist
+  renderChecklist();
+}
+
+function renderChecklist() {
+  const list = document.getElementById('check-list');
+  list.innerHTML = '';
+  CHECKLIST_BASE.forEach((item, i) => {
+    const done = state.checks.includes(i);
+    const el = document.createElement('div');
+    el.className = 'check-item' + (done ? ' done' : '');
+    el.innerHTML = `
+      <div class="check-box"></div>
+      <span class="check-text">${item.text}</span>
+      <span class="check-area">${item.area.toUpperCase()}</span>
+    `;
+    el.onclick = () => toggleCheck(i);
+    list.appendChild(el);
+  });
+}
+
+function toggleCheck(i) {
+  const idx = state.checks.indexOf(i);
+  if (idx === -1) state.checks.push(i);
+  else state.checks.splice(idx, 1);
+  save();
+  renderChecklist();
+  showToast(state.checks.includes(i) ? '✓ Feito' : 'Desmarcado');
+}
+
+// ====== METAS ======
+function renderMetas() {
+  ['saude', 'carreira', 'relacao', 'mente'].forEach(area => {
+    const container = document.getElementById('metas-' + area);
+    container.innerHTML = '';
+    state.metas[area].forEach(meta => {
+      const el = document.createElement('div');
+      el.className = 'meta-card';
+      el.style.borderLeftColor = meta.cor;
+      el.innerHTML = `
+        <div class="meta-card-top">
+          <div class="meta-desc">${meta.desc}</div>
+          <span class="meta-badge badge-${meta.prazo}">${meta.prazo.toUpperCase()}</span>
+        </div>
+        <div class="meta-progress-row">
+          <div class="meta-bar-track"><div class="meta-bar-fill" style="background:${meta.cor};width:${meta.prog}%"></div></div>
+          <span class="meta-pct">${meta.prog}%</span>
+        </div>
+        <div class="meta-input-area" id="inp-${meta.id}">
+          <input type="range" class="meta-slider" min="0" max="100" value="${meta.prog}"
+            oninput="updateMeta('${area}','${meta.id}',this.value,this)">
+        </div>
+      `;
+      el.onclick = () => {
+        const inp = document.getElementById('inp-' + meta.id);
+        inp.classList.toggle('open');
+      };
+      container.appendChild(el);
+    });
+  });
+}
+
+function updateMeta(area, id, val, slider) {
+  val = parseInt(val);
+  state.metas[area].find(m => m.id === id).prog = val;
+  save();
+  const card = slider.closest('.meta-card');
+  card.querySelector('.meta-bar-fill').style.width = val + '%';
+  card.querySelector('.meta-pct').textContent = val + '%';
+}
+
+// ====== REGISTRO ======
+function selectHumor(btn) {
+  document.querySelectorAll('.humor-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  state.humorSelected = btn.dataset.humor;
+}
+
+function toggleTag(el) {
+  el.classList.toggle('selected');
+  const tag = el.dataset.tag;
+  const idx = state.tagsSelected.indexOf(tag);
+  if (idx === -1) state.tagsSelected.push(tag);
+  else state.tagsSelected.splice(idx, 1);
+}
+
+function salvarRegistro() {
+  const aconteceu = document.getElementById('txt-aconteceu').value.trim();
+  const sentiu = document.getElementById('txt-sentiu').value.trim();
+  const diferente = document.getElementById('txt-diferente').value.trim();
+
+  if (!aconteceu) { showToast('Escreva pelo menos o que aconteceu'); return; }
+
+  const reg = {
+    data: new Date().toISOString(),
+    humor: state.humorSelected || '3',
+    aconteceu, sentiu, diferente,
+    tags: [...state.tagsSelected]
+  };
+
+  state.registros.unshift(reg);
+  save();
+
+  // Reset
+  document.getElementById('txt-aconteceu').value = '';
+  document.getElementById('txt-sentiu').value = '';
+  document.getElementById('txt-diferente').value = '';
+  document.querySelectorAll('.humor-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.area-tag').forEach(t => t.classList.remove('selected'));
+  state.humorSelected = null;
+  state.tagsSelected = [];
+
+  renderHistorico();
+  showToast('✓ Registro salvo');
+}
+
+const HUMORES = { '1': '😞', '2': '😕', '3': '😐', '4': '🙂', '5': '😄' };
+
+function renderHistorico() {
+  const list = document.getElementById('historico-list');
+  if (state.registros.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📓</div><div class="empty-state-text">NENHUM REGISTRO AINDA</div></div>';
+    return;
+  }
+  list.innerHTML = '';
+  state.registros.slice(0, 10).forEach(reg => {
+    const d = new Date(reg.data);
+    const dataStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const el = document.createElement('div');
+    el.className = 'historico-card';
+    el.innerHTML = `
+      <div class="historico-header">
+        <span class="historico-data">${dataStr}</span>
+        <span class="historico-humor">${HUMORES[reg.humor] || '😐'}</span>
+      </div>
+      <div class="historico-texto">${reg.aconteceu}</div>
+      ${reg.tags.length ? '<div class="historico-tags">' + reg.tags.map(t => `<span class="historico-tag">${t.toUpperCase()}</span>`).join('') + '</div>' : ''}
+    `;
+    list.appendChild(el);
+  });
+}
+
+// ====== REVISÃO ======
+function renderRevisao() {
+  const total = state.registros.length;
+
+  // Periodo
+  if (total === 0) {
+    document.getElementById('revisao-periodo').textContent = 'FAÇA SEU PRIMEIRO REGISTRO PARA COMEÇAR';
+  } else {
+    const first = new Date(state.registros[state.registros.length - 1].data);
+    const last = new Date(state.registros[0].data);
+    const dias = Math.max(1, Math.round((last - first) / 86400000) + 1);
+    document.getElementById('revisao-periodo').textContent = `${total} REGISTROS · ${dias} DIAS DE PROJETO`;
+  }
+
+  // Semáforo
+  const areas = [
+    { key: 'saude', icon: '💪', label: 'SAÚDE', area: 'saude' },
+    { key: 'carreira', icon: '📈', label: 'CARREIRA', area: 'carreira' },
+    { key: 'relacao', icon: '❤️', label: 'RELAÇÃO', area: 'relacao' },
+    { key: 'mente', icon: '🧠', label: 'MENTE', area: 'mente' },
+  ];
+
+  const grid = document.getElementById('semaforo-grid');
+  grid.innerHTML = '';
+
+  areas.forEach(a => {
+    const metas = state.metas[a.area];
+    const avg = metas.reduce((s, m) => s + m.prog, 0) / metas.length;
+    let status, cor;
+    if (avg >= 60) { status = 'EM PROGRESSO'; cor = '#27AE60'; }
+    else if (avg >= 20) { status = 'INICIANDO'; cor = '#F39C12'; }
+    else { status = 'ATENÇÃO NECESSÁRIA'; cor = '#E74C3C'; }
+
+    const el = document.createElement('div');
+    el.className = 'semaforo-card';
+    el.style.borderTop = `2px solid ${cor}`;
+    el.innerHTML = `
+      <span class="semaforo-icon">${a.icon}</span>
+      <div class="semaforo-pilar">${a.label}</div>
+      <div class="semaforo-status" style="color:${cor}">${status}</div>
+    `;
+    grid.appendChild(el);
+  });
+}
+
+// ====== TOAST ======
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ====== INIT ======
+initDate();
+renderPainel();
+renderHistorico();
+
+// ====== PWA: registra o service worker ======
+// Isso é o que transforma o site num app instalável e offline.
+// Roda só uma vez — depois o próprio SW toma conta.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[MULLER] App pronto para instalar. SW ativo:', reg.scope))
+      .catch(err => console.warn('[MULLER] Service worker não registrou:', err));
+  });
+}
+</script>
+</body>
+</html>
